@@ -43,8 +43,8 @@ func NewMockHttpClient() (*http.Client, error) {
 				Endpoints: []tunnels.TunnelEndpoint{
 					{
 						HostID: "host1",
-						TunnelRelayTunnelEndpoint: tunnels.TunnelRelayTunnelEndpoint{
-							ClientRelayURI: hostURL,
+						TunnelRelayDetails: tunnels.TunnelRelayDetails{
+							ClientRelayUri: hostURL,
 						},
 					},
 				},
@@ -155,7 +155,7 @@ func newMockrelayServer(opts ...relayServerOption) (*relayServer, error) {
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	server.sshConfig.AddHostKey(ssh.Signer(sshPrivateKey))
+	server.sshConfig.AddHostKey(sshPrivateKey)
 
 	server.httpServer = httptest.NewServer(http.HandlerFunc(makeConnection(server)))
 

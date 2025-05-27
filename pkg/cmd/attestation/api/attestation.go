@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/sigstore/sigstore-go/pkg/bundle"
+	v1 "github.com/sigstore/sigstore/pkg/api/v1"
 )
 
 const (
@@ -32,14 +33,18 @@ func FilterAttestations(predicateType string, attestations []*Attestation) ([]*A
 	filteredAttestations := []*Attestation{}
 
 	for _, each := range attestations {
-		dsseEnvelope := each.Bundle.GetDsseEnvelope()
-		if dsseEnvelope != nil {
-			if dsseEnvelope.PayloadType != "application/vnd.in-toto+json" {
+		env, err := each.Bundle.GetEnvelope()
+		if err != nil {
+			continue
+		}
+
+		if env != nil {
+			if env.PayloadType != "application/vnd.in-toto+json" {
 				// Don't fail just because an entry isn't intoto
 				continue
 			}
 			var intotoStatement IntotoStatement
-			if err := json.Unmarshal([]byte(dsseEnvelope.Payload), &intotoStatement); err != nil {
+			if err := json.Unmarshal(env.Payload, &intotoStatement); err != nil {
 				// Don't fail just because a single entry can't be unmarshalled
 				continue
 			}

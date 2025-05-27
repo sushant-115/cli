@@ -189,13 +189,13 @@ pagination:
 }
 
 func IsBinaryFile(file string) (bool, error) {
-	detectedMime, err := mimetype.DetectFile(file)
+	mType, err := mimetype.DetectFile(file)
 	if err != nil {
 		return false, err
 	}
 
 	isBinary := true
-	for mime := detectedMime; mime != nil; mime = mime.Parent() {
+	for mime := mType; mime != nil; mime = mime.Parent() {
 		if mime.Is("text/plain") {
 			isBinary = false
 			break
@@ -205,8 +205,9 @@ func IsBinaryFile(file string) (bool, error) {
 }
 
 func IsBinaryContents(contents []byte) bool {
+	mType := mimetype.Detect(contents)
 	isBinary := true
-	for mime := mimetype.Detect(contents); mime != nil; mime = mime.Parent() {
+	for mime := mType; mime != nil; mime = mime.Parent() {
 		if mime.Is("text/plain") {
 			isBinary = false
 			break
