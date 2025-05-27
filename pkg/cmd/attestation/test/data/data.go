@@ -13,7 +13,7 @@ var SigstoreBundleRaw []byte
 // SigstoreBundle returns a test sigstore-go bundle.Bundle
 func SigstoreBundle(t *testing.T) *bundle.Bundle {
 	b := &bundle.Bundle{}
-	err := b.UnmarshalJSON(SigstoreBundleRaw)
+	err := b.DecodeJSON(SigstoreBundleRaw)
 	if err != nil {
 		t.Fatalf("failed to unmarshal sigstore bundle: %v", err)
 	}

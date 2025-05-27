@@ -228,8 +228,7 @@ func (c *LiveClient) getBundle(url string) (*bundle.Bundle, error) {
 			return fmt.Errorf("failed to read blob storage response body: %w", err)
 		}
 
-		var out []byte
-		decompressed, err := snappy.Decode(out, body)
+		decompressed, err := snappy.Decode(nil, body)
 		if err != nil {
 			return backoff.Permanent(fmt.Errorf("failed to decompress with snappy: %w", err))
 		}

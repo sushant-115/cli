@@ -72,25 +72,35 @@ func (c LiveClient) GetAttestations(ref name.Reference, digest string) ([]*api.A
 	attestations := make([]*api.Attestation, 0)
 
 	transportOpts := []remote.Option{remote.WithAuthFromKeychain(authn.DefaultKeychain)}
-	referrers, err := remote.Referrers(ref.Context().Digest(digest), transportOpts...)
+	desc, err := remote.Get(ref.Context().Digest(digest), transportOpts...)
 	if err != nil {
 		return attestations, fmt.Errorf("error getting referrers: %w", err)
 	}
-	refManifest, err := referrers.IndexManifest()
-	if err != nil {
-		return attestations, fmt.Errorf("error getting referrers manifest: %w", err)
+
+	if desc.MediaType != v1.MediaTypeImageManifestList {
+		return attestations, fmt.Errorf("unexpected media type: %s", desc.MediaType)
 	}
 
-	for _, refDesc := range refManifest.Manifests {
-		if !strings.HasPrefix(refDesc.ArtifactType, "application/vnd.dev.sigstore.bundle") {
+	idx, err := desc.ImageIndex()
+	if err != nil {
+		return attestations, fmt.Errorf("error getting index: %w", err)
+	}
+
+	manifests, err := idx.Manifests()
+	if err != nil {
+		return attestations, fmt.Errorf("error getting manifests: %w", err)
+	}
+
+	for _, manifest := range manifests {
+		if !strings.HasPrefix(manifest.MediaType, "application/vnd.dev.sigstore.bundle") {
 			continue
 		}
 
-		refImg, err := remote.Image(ref.Context().Digest(refDesc.Digest.String()), remote.WithAuthFromKeychain(authn.DefaultKeychain))
+		img, err := remote.Image(ref.Context().Digest(manifest.Digest.String()), remote.WithAuthFromKeychain(authn.DefaultKeychain))
 		if err != nil {
 			return attestations, fmt.Errorf("error getting referrer image: %w", err)
 		}
-		layers, err := refImg.Layers()
+		layers, err := img.Layers()
 		if err != nil {
 			return attestations, fmt.Errorf("error getting referrer image: %w", err)
 		}

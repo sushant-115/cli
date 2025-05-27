@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sigstore/sigstore-go/pkg/bundle"
+	"github.com/sigstore/sigstore-go/pkg/signature"
+	"github.com/sigstore/sigstore/pkg/signature/payload"
 )
 
 const (
@@ -16,8 +17,8 @@ const (
 var ErrNoAttestationsFound = errors.New("no attestations found")
 
 type Attestation struct {
-	Bundle    *bundle.Bundle `json:"bundle"`
-	BundleURL string         `json:"bundle_url"`
+	Bundle    *signature.VerificationBundle `json:"bundle"`
+	BundleURL string                          `json:"bundle_url"`
 }
 
 type AttestationsResponse struct {
@@ -32,14 +33,25 @@ func FilterAttestations(predicateType string, attestations []*Attestation) ([]*A
 	filteredAttestations := []*Attestation{}
 
 	for _, each := range attestations {
-		dsseEnvelope := each.Bundle.GetDsseEnvelope()
-		if dsseEnvelope != nil {
-			if dsseEnvelope.PayloadType != "application/vnd.in-toto+json" {
+		env, err := each.Bundle.GetEnvelope()
+		if err != nil {
+			continue // or handle the error appropriately
+		}
+		if env != nil {
+			payloadType, err := env.PayloadType()
+			if err != nil {
+				continue
+			}
+			if payloadType != payload.MimeTypeIntotoPayload {
 				// Don't fail just because an entry isn't intoto
 				continue
 			}
+			payloadBytes, err := env.Payload()
+			if err != nil {
+				continue
+			}
 			var intotoStatement IntotoStatement
-			if err := json.Unmarshal([]byte(dsseEnvelope.Payload), &intotoStatement); err != nil {
+			if err := json.Unmarshal(payloadBytes, &intotoStatement); err != nil {
 				// Don't fail just because a single entry can't be unmarshalled
 				continue
 			}

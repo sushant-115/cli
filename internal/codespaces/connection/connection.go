@@ -54,10 +54,23 @@ func NewCodespaceConnection(ctx context.Context, codespace *api.Codespace, httpC
 
 	// Create the tunnel definition
 	tunnel := &tunnels.Tunnel{
-		AccessTokens: map[tunnels.TunnelAccessScope]string{tunnels.TunnelAccessScopeConnect: connectToken, tunnels.TunnelAccessScopeManagePorts: managementToken},
-		TunnelID:     tunnelProperties.TunnelId,
-		ClusterID:    tunnelProperties.ClusterId,
-		Domain:       tunnelProperties.Domain,
+		TunnelID:  tunnelProperties.TunnelId,
+		ClusterID: tunnelProperties.ClusterId,
+		Domain:    tunnelProperties.Domain,
+		AccessPolicies: &tunnels.TunnelAccessPolicies{
+			Connect: &tunnels.TunnelAccessPolicy{
+				AuthenticationRequired: true,
+				Scopes: []string{
+					string(tunnels.TunnelAccessScopeConnect),
+				},
+			},
+			ManagePorts: &tunnels.TunnelAccessPolicy{
+				AuthenticationRequired: true,
+				Scopes: []string{
+					string(tunnels.TunnelAccessScopeManagePorts),
+				},
+			},
+		},
 	}
 
 	// Create options
@@ -66,7 +79,7 @@ func NewCodespaceConnection(ctx context.Context, codespace *api.Codespace, httpC
 	}
 
 	// Create the tunnel client (not connected yet)
-	tunnelClient, err := getTunnelClient(ctx, tunnelManager, tunnel, options)
+	tunnelClient, err := getTunnelClient(ctx, tunnelManager, tunnel, options, connectToken, managementToken)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tunnel client: %w", err)
 	}
@@ -93,7 +106,7 @@ func (c *CodespaceConnection) Connect(ctx context.Context) error {
 	}
 
 	// Connect to the tunnel
-	if err := c.TunnelClient.Client.Connect(ctx, ""); err != nil {
+	if err := c.TunnelClient.Client.Connect(ctx); err != nil {
 		return fmt.Errorf("error connecting to tunnel: %w", err)
 	}
 
@@ -126,13 +139,18 @@ func (c *CodespaceConnection) Close() error {
 // want to connect to and perform operations on ports (add, remove, list, etc.).
 func getTunnelManager(tunnelProperties api.TunnelProperties, httpClient *http.Client) (tunnelManager *tunnels.Manager, err error) {
 	userAgent := []tunnels.UserAgent{{Name: clientName}}
-	url, err := url.Parse(tunnelProperties.ServiceUri)
+	uri, err := url.Parse(tunnelProperties.ServiceUri)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing tunnel service uri: %w", err)
 	}
+	options := tunnels.ManagerOptions{
+		UserAgents: userAgent,
+		HTTPClient: httpClient,
+		TunnelServiceURI: uri,
+	}
 
 	// Create the tunnel manager
-	tunnelManager, err = tunnels.NewManager(userAgent, nil, url, httpClient)
+	tunnelManager, err = tunnels.NewManager(options)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tunnel manager: %w", err)
 	}
@@ -143,18 +161,25 @@ func getTunnelManager(tunnelProperties api.TunnelProperties, httpClient *http.Cl
 // getTunnelClient creates a tunnel client for the given tunnel.
 // The tunnel client is used to connect to the tunnel and allows
 // for ports to be forwarded locally.
-func getTunnelClient(ctx context.Context, tunnelManager *tunnels.Manager, tunnel *tunnels.Tunnel, options *tunnels.TunnelRequestOptions) (tunnelClient *TunnelClient, err error) {
+func getTunnelClient(ctx context.Context, tunnelManager *tunnels.Manager, tunnel *tunnels.Tunnel, options *tunnels.TunnelRequestOptions, connectToken string, managePortsToken string) (tunnelClient *TunnelClient, err error) {
 	// Get the tunnel that we want to connect to
 	codespaceTunnel, err := tunnelManager.GetTunnel(ctx, tunnel, options)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tunnel: %w", err)
 	}
 
-	// Copy the access tokens from the tunnel definition
-	codespaceTunnel.AccessTokens = tunnel.AccessTokens
-
 	// We need to pass false for accept local connections because we don't want to automatically connect to all forwarded ports
-	client, err := tunnels.NewClient(log.New(io.Discard, "", log.LstdFlags), codespaceTunnel, false)
+	clientOptions := tunnels.ClientOptions{
+		Log:                       log.New(io.Discard, "", log.LstdFlags),
+		Tunnel:                    codespaceTunnel,
+		EnableAutomaticReconnection: true,
+		AccessTokens: map[tunnels.TunnelAccessScope]string{
+			tunnels.TunnelAccessScopeConnect:    connectToken,
+			tunnels.TunnelAccessScopeManagePorts: managePortsToken,
+		},
+	}
+	client, err := tunnels.NewClient(clientOptions)
+
 	if err != nil {
 		return nil, fmt.Errorf("error creating tunnel client: %w", err)
 	}

@@ -172,10 +172,14 @@ func versionGreaterThan(v, w string) bool {
 		return fmt.Sprintf("%d-pre.0", n+1)
 	})
 
-	vv, ve := version.NewVersion(v)
-	vw, we := version.NewVersion(w)
+	vv, errV := version.NewVersion(v)
+	vw, errW := version.NewVersion(w)
 
-	return ve == nil && we == nil && vv.GreaterThan(vw)
+	if errV != nil || errW != nil {
+		return false
+	}
+
+	return vv.GreaterThan(vw)
 }
 
 // IsTerminal determines if a file descriptor is an interactive terminal / TTY.

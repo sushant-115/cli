@@ -15,6 +15,7 @@ import (
 	ghauth "github.com/cli/go-gh/v2/pkg/auth"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/sigstore/sigstore-go/pkg/client"
 	"github.com/sigstore/sigstore-go/pkg/tuf"
 	"github.com/spf13/cobra"
 )
@@ -139,7 +140,7 @@ func getTrustedRoot(makeTUF tufClientInstantiator, opts *Options) error {
 		}
 
 		tufOpt.Root = tufRoot
-		tufOpt.RepositoryBaseURL = opts.TufUrl
+		tufOpt.RepoBaseURL = opts.TufUrl
 		tufOptions = append(tufOptions, tufConfig{
 			tufOptions: tufOpt,
 			targets:    []string{ghTR},
@@ -181,7 +182,7 @@ func getTrustedRoot(makeTUF tufClientInstantiator, opts *Options) error {
 			if !opts.VerifyOnly {
 				fmt.Println(output)
 			} else {
-				fmt.Printf("Local TUF repository for %s updated and verified\n", tufOpt.tufOptions.RepositoryBaseURL)
+				fmt.Printf("Local TUF repository for %s updated and verified\n", tufOpt.tufOptions.RepoBaseURL)
 			}
 		}
 	}

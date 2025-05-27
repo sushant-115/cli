@@ -55,15 +55,15 @@ func TestNewPortForwarder(t *testing.T) {
 
 func TestAccessControlEntriesToVisibility(t *testing.T) {
 	publicAccessControlEntry := []tunnels.TunnelAccessControlEntry{{
-		Type: tunnels.TunnelAccessControlEntryTypeAnonymous,
+		AccessType: tunnels.TunnelAccessTypePublic,
 	}}
 	orgAccessControlEntry := []tunnels.TunnelAccessControlEntry{{
-		Provider: string(tunnels.TunnelAuthenticationSchemeGitHub),
+		AuthenticationType: tunnels.TunnelAuthenticationTypeGitHub,
 	}}
 	privateAccessControlEntry := []tunnels.TunnelAccessControlEntry{}
 	orgIsDenyAccessControlEntry := []tunnels.TunnelAccessControlEntry{{
-		Provider: string(tunnels.TunnelAuthenticationSchemeGitHub),
-		IsDeny:   true,
+		AuthenticationType: tunnels.TunnelAuthenticationTypeGitHub,
+		IsDeny:             true,
 	}}
 
 	tests := []struct {

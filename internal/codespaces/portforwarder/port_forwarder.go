@@ -108,7 +108,7 @@ func (fwd *CodespacesPortForwarder) ForwardPort(ctx context.Context, opts Forwar
 		return fmt.Errorf("error converting port: %w", err)
 	}
 
-	tunnelPort := tunnels.NewTunnelPort(port, "", "", tunnels.TunnelProtocolHttp)
+	tunnelPort := tunnels.NewTunnelPort(port, tunnels.PortProtocolHTTP)
 
 	// If no visibility is provided, Dev Tunnels will use the default (private)
 	if opts.Visibility != "" {
@@ -234,7 +234,7 @@ func (fwd *CodespacesPortForwarder) ListPorts(ctx context.Context) (ports []*tun
 
 // UpdatePortVisibility changes the visibility (private, org, public) of the specified port.
 func (fwd *CodespacesPortForwarder) UpdatePortVisibility(ctx context.Context, remotePort int, visibility string) error {
-	tunnelPort, err := fwd.connection.TunnelManager.GetTunnelPort(ctx, fwd.connection.Tunnel, remotePort, fwd.connection.Options)
+	tunnelPort, err := fwd.connection.TunnelManager.GetTunnelPort(ctx, fwd.connection.Tunnel, uint16(remotePort), fwd.connection.Options)
 	if err != nil {
 		return fmt.Errorf("error getting tunnel port: %w", err)
 	}
@@ -281,7 +281,8 @@ func (fwd *CodespacesPortForwarder) UpdatePortVisibility(ctx context.Context, re
 	case err := <-done:
 		if err != nil {
 			// If we fail to re-forward the port, we need to forward again with the original visibility so the port is still accessible
-			_ = fwd.ForwardPort(ctx, ForwardPortOpts{Port: remotePort, Visibility: AccessControlEntriesToVisibility(tunnelPort.AccessControl.Entries)})
+			originalVisibility := AccessControlEntriesToVisibility(tunnelPort.AccessControl.Entries)
+			_ = fwd.ForwardPort(ctx, ForwardPortOpts{Port: remotePort, Visibility: originalVisibility})
 
 			return fmt.Errorf("error connecting to tunnel: %w", err)
 		}
@@ -315,6 +316,9 @@ func (fwd *CodespacesPortForwarder) Close() error {
 
 // AccessControlEntriesToVisibility converts the access control entries used by Dev Tunnels to a friendly visibility value.
 func AccessControlEntriesToVisibility(accessControlEntries []tunnels.TunnelAccessControlEntry) string {
+	if len(accessControlEntries) == 0 {
+		return PrivatePortVisibility
+	}
 	for _, entry := range accessControlEntries {
 		// If we have the anonymous type (and we're not denying it), it's public
 		if (entry.Type == tunnels.TunnelAccessControlEntryTypeAnonymous) && (!entry.IsDeny) {
@@ -342,20 +346,21 @@ func visibilityToAccessControlEntries(visibility string) []tunnels.TunnelAccessC
 		}}
 	case OrgPortVisibility:
 		return []tunnels.TunnelAccessControlEntry{{
-			Type:     tunnels.TunnelAccessControlEntryTypeOrganizations,
+			Type:     tunnels.TunnelAccessControlEntryTypeOrganization,
 			Subjects: []string{githubSubjectId},
 			Scopes: []string{
 				string(tunnels.TunnelAccessScopeConnect),
 			},
-			Provider: string(tunnels.TunnelAuthenticationSchemeGitHub),
+			AuthenticationType: tunnels.TunnelAuthenticationSchemeGitHub,
 		}}
 	default:
 		// The tunnel manager doesn't accept empty access control entries, so we need to return a deny entry
 		return []tunnels.TunnelAccessControlEntry{{
-			Type:     tunnels.TunnelAccessControlEntryTypeOrganizations,
+			Type:     tunnels.TunnelAccessControlEntryTypeOrganization,
 			Subjects: []string{githubSubjectId},
 			Scopes:   []string{},
 			IsDeny:   true,
+			AuthenticationType: tunnels.TunnelAuthenticationSchemeGitHub,
 		}}
 	}
 }
