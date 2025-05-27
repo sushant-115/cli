@@ -30,7 +30,8 @@ func IsDebugEnabled() (bool, string) {
 
 var TerminalSize = func(w interface{}) (int, int, error) {
 	if f, isFile := w.(*os.File); isFile {
-		return term.GetSize(int(f.Fd()))
+		width, height, err := term.GetSize(int(f.Fd()))
+		return width, height, err
 	}
 
 	return 0, 0, fmt.Errorf("%v is not a file", w)

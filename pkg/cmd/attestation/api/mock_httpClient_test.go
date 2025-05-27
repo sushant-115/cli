@@ -20,8 +20,10 @@ func (m *mockHttpClient) Get(url string) (*http.Response, error) {
 	m.On("OnGetSuccess").Return()
 	m.MethodCalled("OnGetSuccess")
 
-	var compressed []byte
-	compressed = snappy.Encode(compressed, data.SigstoreBundleRaw)
+	compressed, err := snappy.Encode(nil, data.SigstoreBundleRaw)
+	if err != nil {
+		return nil, err
+	}
 	return &http.Response{
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewReader(compressed)),
@@ -36,8 +38,10 @@ func (m *invalidBundleClient) Get(url string) (*http.Response, error) {
 	m.On("OnGetInvalidBundle").Return()
 	m.MethodCalled("OnGetInvalidBundle")
 
-	var compressed []byte
-	compressed = snappy.Encode(compressed, []byte("invalid bundle bytes"))
+	compressed, err := snappy.Encode(nil, []byte("invalid bundle bytes"))
+	if err != nil {
+		return nil, err
+	}
 	return &http.Response{
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewReader(compressed)),
@@ -81,8 +85,10 @@ func (m *failAfterNCallsHttpClient) Get(url string) (*http.Response, error) {
 	}
 
 	m.MethodCalled("OnGetFailAfterNCalls")
-	var compressed []byte
-	compressed = snappy.Encode(compressed, data.SigstoreBundleRaw)
+	compressed, err := snappy.Encode(nil, data.SigstoreBundleRaw)
+	if err != nil {
+		return nil, err
+	}
 	return &http.Response{
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewReader(compressed)),

@@ -7,7 +7,7 @@ import (
 
 	o "github.com/cli/cli/v2/pkg/option"
 	"github.com/cli/go-gh/v2/pkg/config"
-	"github.com/sigstore/sigstore-go/pkg/tuf"
+	"github.com/sigstore/sigstore-go/pkg/root"
 )
 
 //go:embed embed/tuf-repo.github.com/root.json
@@ -15,8 +15,8 @@ var githubRoot []byte
 
 const GitHubTUFMirror = "https://tuf-repo.github.com"
 
-func DefaultOptionsWithCacheSetting(tufMetadataDir o.Option[string]) *tuf.Options {
-	opts := tuf.DefaultOptions()
+func DefaultOptionsWithCacheSetting(tufMetadataDir o.Option[string]) *root.Options {
+	opts := root.GetDefaultOptions()
 
 	// The CODESPACES environment variable will be set to true in a Codespaces workspace
 	if os.Getenv("CODESPACES") == "true" {
@@ -30,16 +30,16 @@ func DefaultOptionsWithCacheSetting(tufMetadataDir o.Option[string]) *tuf.Option
 	opts.CachePath = tufMetadataDir.UnwrapOr(filepath.Join(config.CacheDir(), ".sigstore", "root"))
 
 	// Allow TUF cache for 1 day
-	opts.CacheValidity = 1
+	opts.CacheExpiry = 24
 
 	return opts
 }
 
-func GitHubTUFOptions(tufMetadataDir o.Option[string]) *tuf.Options {
+func GitHubTUFOptions(tufMetadataDir o.Option[string]) *root.Options {
 	opts := DefaultOptionsWithCacheSetting(tufMetadataDir)
 
-	opts.Root = githubRoot
-	opts.RepositoryBaseURL = GitHubTUFMirror
+	opts.StaticRoot = githubRoot
+	opts.RemoteURL = GitHubTUFMirror
 
 	return opts
 }

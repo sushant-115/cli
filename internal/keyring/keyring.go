@@ -23,7 +23,8 @@ func Set(service, user, secret string) error {
 	ch := make(chan error, 1)
 	go func() {
 		defer close(ch)
-		ch <- keyring.Set(service, user, secret)
+		err := keyring.Set(service, user, secret)
+		ch <- err
 	}()
 	select {
 	case err := <-ch:
@@ -63,7 +64,8 @@ func Delete(service, user string) error {
 	ch := make(chan error, 1)
 	go func() {
 		defer close(ch)
-		ch <- keyring.Delete(service, user)
+		err := keyring.Delete(service, user)
+		ch <- err
 	}()
 	select {
 	case err := <-ch:

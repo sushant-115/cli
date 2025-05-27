@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
-	"github.com/sigstore/sigstore-go/pkg/verify"
+	"github.com/sigstore/sigstore-go/pkg/verifier"
+	"github.com/sigstore/sigstore-go/pkg/verifier/policy"
 
 	"github.com/cli/cli/v2/pkg/cmd/attestation/artifact"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/verification"
@@ -107,43 +107,43 @@ func newEnforcementCriteria(opts *Options) (verification.EnforcementCriteria, er
 	return c, nil
 }
 
-func buildCertificateIdentityOption(c verification.EnforcementCriteria) (verify.PolicyOption, error) {
-	sanMatcher, err := verify.NewSANMatcher(c.SAN, c.SANRegex)
+func buildCertificateIdentityOption(c verification.EnforcementCriteria) (verifier.Option, error) {
+	sanMatcher, err := verifier.NewSANMatcher(c.SAN, c.SANRegex)
 	if err != nil {
 		return nil, err
 	}
 
 	// Accept any issuer, we will verify the issuer as part of the extension verification
-	issuerMatcher, err := verify.NewIssuerMatcher("", ".*")
+	issuerMatcher, err := verifier.NewIssuerMatcher("", ".*")
 	if err != nil {
 		return nil, err
 	}
 
-	extensions := certificate.Extensions{
+	extensions := verifier.CertExtensionConstraints{
 		RunnerEnvironment: c.Certificate.RunnerEnvironment,
 	}
 
-	certId, err := verify.NewCertificateIdentity(sanMatcher, issuerMatcher, extensions)
+	certId, err := verifier.NewCertificateIdentity(sanMatcher, issuerMatcher, extensions)
 	if err != nil {
 		return nil, err
 	}
 
-	return verify.WithCertificateIdentity(certId), nil
+	return verifier.WithCertificateIdentity(certId), nil
 }
 
-func buildSigstoreVerifyPolicy(c verification.EnforcementCriteria, a artifact.DigestedArtifact) (verify.PolicyBuilder, error) {
+func buildSigstoreVerifyPolicy(c verification.EnforcementCriteria, a artifact.DigestedArtifact) (policy.Builder, error) {
 	artifactDigestPolicyOption, err := verification.BuildDigestPolicyOption(a)
 	if err != nil {
-		return verify.PolicyBuilder{}, err
+		return policy.Builder{}, err
 	}
 
 	certIdOption, err := buildCertificateIdentityOption(c)
 	if err != nil {
-		return verify.PolicyBuilder{}, err
+		return policy.Builder{}, err
 	}
 
-	policy := verify.NewPolicy(artifactDigestPolicyOption, certIdOption)
-	return policy, nil
+	builder := policy.NewBuilder(artifactDigestPolicyOption, certIdOption)
+	return builder, nil
 }
 
 func validateSignerWorkflow(hostname, signerWorkflow string) (string, error) {

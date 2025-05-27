@@ -59,11 +59,21 @@ func TestNewCodespaceConnection(t *testing.T) {
 
 	// Verify that the connection contains the expected tunnel
 	expectedTunnel := &tunnels.Tunnel{
-		AccessTokens: map[tunnels.TunnelAccessScope]string{tunnels.TunnelAccessScopeConnect: connection.TunnelProperties.ConnectAccessToken, tunnels.TunnelAccessScopeManagePorts: connection.TunnelProperties.ManagePortsAccessToken},
-		TunnelID:     connection.TunnelProperties.TunnelId,
-		ClusterID:    connection.TunnelProperties.ClusterId,
-		Domain:       connection.TunnelProperties.Domain,
+		TunnelID:  connection.TunnelProperties.TunnelId,
+		ClusterID: connection.TunnelProperties.ClusterId,
+		Domain:    connection.TunnelProperties.Domain,
+		AccessControl: &tunnels.TunnelAccessControl{
+			Entries: []*tunnels.TunnelAccessControlEntry{
+				{
+					AccessTokens: map[tunnels.TunnelAccessScope]string{
+						tunnels.TunnelAccessScopeConnect:      connection.TunnelProperties.ConnectAccessToken,
+						tunnels.TunnelAccessScopeManagePorts:  connection.TunnelProperties.ManagePortsAccessToken,
+					},
+				},
+			},
+		},
 	}
+
 	if !reflect.DeepEqual(conn.Tunnel, expectedTunnel) {
 		t.Fatalf("NewCodespaceConnection returned a connection with unexpected tunnel: %+v", conn.Tunnel)
 	}

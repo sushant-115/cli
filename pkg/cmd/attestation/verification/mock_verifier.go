@@ -6,11 +6,11 @@ import (
 
 	"github.com/cli/cli/v2/pkg/cmd/attestation/api"
 	"github.com/cli/cli/v2/pkg/cmd/attestation/test/data"
-	"github.com/sigstore/sigstore-go/pkg/bundle"
-	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 
 	in_toto "github.com/in-toto/attestation/go/v1"
+	"github.com/sigstore/sigstore-go/pkg/bundle"
 	"github.com/sigstore/sigstore-go/pkg/verify"
+	"github.com/sigstore/sigstore-go/pkg/verify/policy"
 )
 
 type MockSigstoreVerifier struct {
@@ -18,7 +18,7 @@ type MockSigstoreVerifier struct {
 	mockResults []*AttestationProcessingResult
 }
 
-func (v *MockSigstoreVerifier) Verify([]*api.Attestation, verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
+func (v *MockSigstoreVerifier) Verify([]*api.Attestation, policy.Options) ([]*AttestationProcessingResult, error) {
 	if v.mockResults != nil {
 		return v.mockResults, nil
 	}
@@ -32,16 +32,14 @@ func (v *MockSigstoreVerifier) Verify([]*api.Attestation, verify.PolicyBuilder) 
 		},
 		VerificationResult: &verify.VerificationResult{
 			Statement: statement,
-			Signature: &verify.SignatureVerificationResult{
-				Certificate: &certificate.Summary{
-					Extensions: certificate.Extensions{
-						BuildSignerURI:           "https://github.com/github/example/.github/workflows/release.yml@refs/heads/main",
-						SourceRepositoryOwnerURI: "https://github.com/sigstore",
-						SourceRepositoryURI:      "https://github.com/sigstore/sigstore-js",
-						Issuer:                   "https://token.actions.githubusercontent.com",
-					},
-				},
+			// Signature: &verify.SignatureVerificationResult{ // Removed struct and inlined fields
+			CertInfo: &verify.CertInfo{
+				BuildSignerURI:           "https://github.com/github/example/.github/workflows/release.yml@refs/heads/main",
+				SourceRepositoryOwnerURI: "https://github.com/sigstore",
+				SourceRepositoryURI:      "https://github.com/sigstore/sigstore-js",
+				Issuer:                   "https://token.actions.githubusercontent.com",
 			},
+			// },
 		},
 	}
 
@@ -63,7 +61,7 @@ func NewMockSigstoreVerifierWithMockResults(t *testing.T, mockResults []*Attesta
 
 type FailSigstoreVerifier struct{}
 
-func (v *FailSigstoreVerifier) Verify([]*api.Attestation, verify.PolicyBuilder) ([]*AttestationProcessingResult, error) {
+func (v *FailSigstoreVerifier) Verify([]*api.Attestation, policy.Options) ([]*AttestationProcessingResult, error) {
 	return nil, fmt.Errorf("failed to verify attestations")
 }
 
@@ -77,17 +75,15 @@ func BuildMockResult(b *bundle.Bundle, buildConfigURI, buildSignerURI, sourceRep
 		},
 		VerificationResult: &verify.VerificationResult{
 			Statement: statement,
-			Signature: &verify.SignatureVerificationResult{
-				Certificate: &certificate.Summary{
-					Extensions: certificate.Extensions{
-						BuildConfigURI:           buildConfigURI,
-						BuildSignerURI:           buildSignerURI,
-						Issuer:                   issuer,
-						SourceRepositoryOwnerURI: sourceRepoOwnerURI,
-						SourceRepositoryURI:      sourceRepoURI,
-					},
-				},
+			// Signature: &verify.SignatureVerificationResult{ // Removed struct and inlined fields
+			CertInfo: &verify.CertInfo{
+				BuildConfigURI:           buildConfigURI,
+				BuildSignerURI:           buildSignerURI,
+				Issuer:                   issuer,
+				SourceRepositoryOwnerURI: sourceRepoOwnerURI,
+				SourceRepositoryURI:      sourceRepoURI,
 			},
+			// },
 		},
 	}
 }
