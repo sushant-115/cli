@@ -317,7 +317,9 @@ func (s *IOStreams) StartProgressIndicatorWithLabel(label string) {
 	// ⣾ ⣷ ⣽ ⣻ ⡿
 	spinnerStyle := spinner.CharSets[11]
 
-	sp := spinner.New(spinnerStyle, 120*time.Millisecond, spinner.WithWriter(s.ErrOut), spinner.WithColor("fgCyan"))
+	sp := spinner.New(spinnerStyle, 120*time.Millisecond)
+	sp.Writer = s.ErrOut
+	sp.Color("fgCyan")
 	if label != "" {
 		sp.Prefix = label + " "
 	}

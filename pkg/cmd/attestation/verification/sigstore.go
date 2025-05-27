@@ -172,17 +172,14 @@ func createCustomVerifiers(trustedRoot string, noPublicGood bool) (map[string]*v
 }
 
 func getBundleIssuer(b *bundle.Bundle) (string, error) {
-	if !b.MinVersion("0.2") {
+	if !b.HasVersion(bundle.RFC6920) {
 		return "", fmt.Errorf("unsupported bundle version: %s", b.MediaType)
 	}
-	verifyContent, err := b.VerificationContent()
+	leafCert, err := b.GetLeafCertificate()
 	if err != nil {
-		return "", fmt.Errorf("failed to get bundle verification content: %v", err)
+		return "", fmt.Errorf("failed to get bundle leaf certificate: %v", err)
 	}
-	leafCert := verifyContent.Certificate()
-	if leafCert == nil {
-		return "", fmt.Errorf("leaf cert not found")
-	}
+
 	if len(leafCert.Issuer.Organization) != 1 {
 		return "", fmt.Errorf("expected the leaf certificate issuer to only have one organization")
 	}
